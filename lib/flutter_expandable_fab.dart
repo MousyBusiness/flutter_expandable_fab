@@ -51,36 +51,37 @@ class ExpandableFabCloseButtonStyle {
   final Color? backgroundColor;
 }
 
-class _ExpandableFabLocation extends StandardFabLocation {
-  final ValueNotifier<ScaffoldPrelayoutGeometry?> scaffoldGeometry =
-      ValueNotifier(null);
-
-  @override
-  double getOffsetX(
-      ScaffoldPrelayoutGeometry scaffoldGeometry, double adjustment) {
-    Future.microtask(() {
-      this.scaffoldGeometry.value = scaffoldGeometry;
-    });
-    return 0;
-  }
-
-  @override
-  double getOffsetY(
-      ScaffoldPrelayoutGeometry scaffoldGeometry, double adjustment) {
-    return 0;
-  }
-}
+// class _ExpandableFabLocation extends StandardFabLocation {
+//   final ValueNotifier<ScaffoldPrelayoutGeometry?> scaffoldGeometry =
+//       ValueNotifier(null);
+//
+//   @override
+//   double getOffsetX(
+//       ScaffoldPrelayoutGeometry scaffoldGeometry, double adjustment) {
+//     Future.microtask(() {
+//       this.scaffoldGeometry.value = scaffoldGeometry;
+//     });
+//     return 0;
+//   }
+//
+//   @override
+//   double getOffsetY(
+//       ScaffoldPrelayoutGeometry scaffoldGeometry, double adjustment) {
+//     return 0;
+//   }
+// }
 
 /// Fab button that can show/hide multiple action buttons with animation.
 @immutable
 class ExpandableFab extends StatefulWidget {
-  static final FloatingActionButtonLocation location = _ExpandableFabLocation();
+  // static final FloatingActionButtonLocation location = _ExpandableFabLocation();
 
   const ExpandableFab({
     Key? key,
     this.distance = 100,
     this.duration = const Duration(milliseconds: 250),
     this.fanAngle = 90,
+    this.nudgeAngle = 0,
     this.initialOpen = false,
     this.type = ExpandableFabType.fan,
     this.collapsedFabSize = ExpandableFabSize.regular,
@@ -105,6 +106,8 @@ class ExpandableFab extends StatefulWidget {
 
   /// Animation duration.
   final Duration duration;
+
+  final double nudgeAngle;
 
   /// Angle of opening when fan type.
   final double fanAngle;
@@ -164,8 +167,7 @@ class ExpandableFab extends StatefulWidget {
   State<ExpandableFab> createState() => ExpandableFabState();
 }
 
-class ExpandableFabState extends State<ExpandableFab>
-    with SingleTickerProviderStateMixin {
+class ExpandableFabState extends State<ExpandableFab> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _expandAnimation;
   bool _open = false;
@@ -215,81 +217,67 @@ class ExpandableFabState extends State<ExpandableFab>
 
   @override
   Widget build(BuildContext context) {
-    final location = ExpandableFab.location as _ExpandableFabLocation;
+    // final location = ExpandableFab.location as _ExpandableFabLocation;
     Offset? offset;
     Widget? cache;
-    return ValueListenableBuilder<ScaffoldPrelayoutGeometry?>(
-      valueListenable: location.scaffoldGeometry,
-      builder: ((context, geometry, child) {
-        if (geometry == null) {
-          return const SizedBox.shrink();
-        }
-        final x = kFloatingActionButtonMargin + geometry.minInsets.right;
-        final bottomContentHeight =
-            geometry.scaffoldSize.height - geometry.contentBottom;
-        final y = kFloatingActionButtonMargin +
-            math.max(geometry.minViewPadding.bottom, bottomContentHeight);
-        if (offset != Offset(x, y)) {
-          offset = Offset(x, y);
-          cache = _buildButtons(offset!);
-        }
-        return cache!;
-      }),
-    );
+    return _buildButtons();
+    // return ValueListenableBuilder<ScaffoldPrelayoutGeometry?>(
+    //   valueListenable: location.scaffoldGeometry,
+    //   builder: ((context, geometry, child) {
+    //     if (geometry == null) {
+    //       return const SizedBox.shrink();
+    //     }
+    //     final x = kFloatingActionButtonMargin + geometry.minInsets.right;
+    //     final bottomContentHeight =
+    //         geometry.scaffoldSize.height - geometry.contentBottom;
+    //     final y = kFloatingActionButtonMargin +
+    //         math.max(geometry.minViewPadding.bottom, bottomContentHeight);
+    //     if (offset != Offset(x, y)) {
+    //       offset = Offset(x, y);
+    //       cache = _buildButtons(offset!);
+    //     }
+    //     return cache!;
+    //   }),
+    // );
   }
 
-  Widget _buildButtons(Offset offset) {
+  Widget _buildButtons() {
     final blur = widget.overlayStyle?.blur;
     final overlayColor = widget.overlayStyle?.color;
     return GestureDetector(
       onTap: () => toggle(),
-      child: Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          Container(),
-          if (blur != null)
-            IgnorePointer(
-              ignoring: !_open,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 0.0, end: _open ? blur : 0.0),
-                duration: widget.duration,
-                curve: Curves.easeInOut,
-                builder: (_, value, child) {
-                  if (value < 0.001) {
-                    return child!;
-                  }
-                  return BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
-                    child: child,
-                  );
-                },
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          if (overlayColor != null)
-            IgnorePointer(
-              ignoring: !_open,
-              child: AnimatedOpacity(
-                duration: widget.duration,
-                opacity: _open ? 1 : 0,
-                curve: Curves.easeInOut,
-                child: Container(
-                  color: overlayColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          print(
+              "Containst: ${constraints.maxHeight}, ${constraints.maxWidth}, ${constraints.minHeight}, ${constraints.minWidth}");
+          return Stack(
+            children: [
+              ..._buildExpandingActionButtons(Offset(72.5, 72.5)),
+              Align(
+                alignment: Alignment.center,
+                child: Stack(
+                  children: [
+                    Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Center(
+                          child: _buildTapToCloseFab(),
+                        )),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(child: _buildTapToOpenFab()),
+                    )
+                  ],
                 ),
               ),
-            ),
-          ..._buildExpandingActionButtons(offset),
-          Transform.translate(
-            offset: -offset,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                _buildTapToCloseFab(),
-                _buildTapToOpenFab(),
-              ],
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -319,14 +307,13 @@ class ExpandableFabState extends State<ExpandableFab>
   List<Widget> _buildExpandingActionButtons(Offset offset) {
     final children = <Widget>[];
     final count = widget.children.length;
-    final addedDistance =
-        widget.expandedFabSize == ExpandableFabSize.regular ? 8 : 0;
+    final addedDistance = widget.expandedFabSize == ExpandableFabSize.regular ? 8 : 0;
     for (var i = 0; i < count; i++) {
       final double dir, dist;
       switch (widget.type) {
         case ExpandableFabType.fan:
           if (count > 1) {
-            dir = widget.fanAngle / (count - 1) * i;
+            dir = widget.fanAngle / (count) * i;
           } else {
             dir = widget.fanAngle;
           }
@@ -343,7 +330,7 @@ class ExpandableFabState extends State<ExpandableFab>
       }
       children.add(
         _ExpandingActionButton(
-          directionInDegrees: dir + (90 - widget.fanAngle) / 2,
+          directionInDegrees: dir+widget.nudgeAngle,
           maxDistance: dist,
           progress: _expandAnimation,
           offset: offset + widget.childrenOffset,
@@ -356,48 +343,37 @@ class ExpandableFabState extends State<ExpandableFab>
 
   Widget _buildTapToOpenFab() {
     final duration = widget.duration;
-    final transformValues =
-        widget.expandedFabSize == ExpandableFabSize.regular ? 1.0 : 0.715;
+    // final transformValues = widget.expandedFabSize == ExpandableFabSize.regular ? 1.0 : 0.715;
 
     return IgnorePointer(
       ignoring: _open,
-      child: AnimatedContainer(
-        transformAlignment: Alignment.center,
-        transform: Matrix4.diagonal3Values(
-          _open ? transformValues : 1.0,
-          _open ? transformValues : 1.0,
-          1.0,
-        ),
+      child: AnimatedOpacity(
+        opacity: _open ? 0.0 : 1.0,
+        curve: const Interval(0.25, 1.0, curve: Curves.easeInOut),
         duration: duration,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
-        child: AnimatedOpacity(
-          opacity: _open ? 0.0 : 1.0,
-          curve: const Interval(0.25, 1.0, curve: Curves.easeInOut),
-          duration: duration,
-          child: widget.collapsedFabSize == ExpandableFabSize.regular
-              ? FloatingActionButton(
-                  heroTag: widget.openButtonHeroTag,
-                  foregroundColor: widget.foregroundColor,
-                  backgroundColor: widget.backgroundColor,
-                  onPressed: toggle,
-                  child: AnimatedRotation(
-                    duration: duration,
-                    turns: _open ? -0.5 : 0,
-                    child: widget.child,
-                  ),
-                )
-              : FloatingActionButton.small(
-                  heroTag: widget.openButtonHeroTag,
-                  foregroundColor: widget.foregroundColor,
-                  backgroundColor: widget.backgroundColor,
-                  onPressed: toggle,
-                  child: AnimatedRotation(
-                    duration: duration,
-                    turns: _open ? -0.5 : 0,
-                    child: widget.child,
-                  ),
+        child: widget.collapsedFabSize == ExpandableFabSize.regular
+            ? FloatingActionButton(
+                heroTag: widget.openButtonHeroTag,
+                foregroundColor: widget.foregroundColor,
+                backgroundColor: widget.backgroundColor,
+                onPressed: toggle,
+                child: AnimatedRotation(
+                  duration: duration,
+                  turns: _open ? -0.5 : 0,
+                  child: widget.child,
                 ),
-        ),
+              )
+            : FloatingActionButton.small(
+                heroTag: widget.openButtonHeroTag,
+                foregroundColor: widget.foregroundColor,
+                backgroundColor: widget.backgroundColor,
+                onPressed: toggle,
+                child: AnimatedRotation(
+                  duration: duration,
+                  turns: _open ? -0.5 : 0,
+                  child: widget.child,
+                ),
+              ),
       ),
     );
   }
