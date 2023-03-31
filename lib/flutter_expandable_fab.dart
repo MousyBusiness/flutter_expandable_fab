@@ -248,8 +248,6 @@ class ExpandableFabState extends State<ExpandableFab> with SingleTickerProviderS
       onTap: () => toggle(),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          print(
-              "Containst: ${constraints.maxHeight}, ${constraints.maxWidth}, ${constraints.minHeight}, ${constraints.minWidth}");
           return Stack(
             children: [
               ..._buildExpandingActionButtons(Offset(72.5, 72.5)),
